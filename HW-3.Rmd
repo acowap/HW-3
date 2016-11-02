@@ -31,8 +31,6 @@ Please indicate
 * Any comments you have:
 
 
-
-
 ## Question 1:
 
 We will use a logistic regression model to predict sex. Our metric to rate how well our
@@ -57,7 +55,7 @@ correctly predicted.
 # To keep this exercise simple, let's remove the only 3 users (0.005% of users)
 # who did not list a height, define the outcome variable, and add an ID variable
 # to distinguish the users
-profiles <- read_csv(file="CopyOfprofiles.csv") %>% 
+profiles <- read_csv(file="profiles.csv") %>% 
   filter(!is.na(height)) %>% 
   mutate(is_female=ifelse(sex=='f', 1, 0)) %>% 
   tibble::rownames_to_column(var="id")
@@ -92,11 +90,9 @@ profiles <- profiles %>% mutate(diet3 = ifelse(grepl("anything", diet), "anythin
   mutate(job2 = ifelse(is.na(job), "na", job)) %>% 
   mutate(income2 = ifelse(is.na(income), "na", income))
   
-
-
 training <- profiles[sample(nrow(profiles), 2997), ]
 
-test <- profiles[sample(nrow(profiles), 56946), ]
+test <- profiles %>% filter(!(id %in% training$id))
 
 ```
 
@@ -128,13 +124,17 @@ type="response")` does? The help file is located in `?predict.glm`
 ```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
 pre_train <- predict(predict_sex_model)
 
-train_pre <- training %>% mutate(phat1 = pre_train) %>% mutate(prediction = ifelse(phat1 >.5, 1, 0)) %>% 
+train_pre <- training %>% 
+  mutate(phat1 = pre_train) %>% 
+  mutate(prediction = ifelse(phat1 >.5, 1, 0)) %>% 
   mutate(correct = ifelse(prediction == is_female, 1, 0))
 
 
 pre <- predict(predict_sex_model, newdata = test, type = "response")
 
-predictions <- test %>% mutate(phat1 = pre) %>% mutate(prediction = ifelse(phat1 >.5, 1, 0)) %>% 
+predictions <- test %>% 
+  mutate(phat1 = pre) %>% 
+  mutate(prediction = ifelse(phat1 >.5, 1, 0)) %>% 
   mutate(correct = ifelse(prediction == is_female, 1, 0))
 
 p_correct_test <- (sum(predictions$correct)/56946)*100
@@ -175,25 +175,14 @@ bitcoin <- Quandl("BAVERAGE/USD") %>%
 gold <- Quandl("BUNDESBANK/BBK01_WT5511") %>%
   tbl_df() 
 
-temp <- bitcoin %>% select(Avg)
+bitcoin_vol <- bitcoin %>% mutate(Avglag = lag(Avg)) %>% mutate(volatility_b = (Avg-Avglag)/Avg)
 
-avg_vol1 <- tail(temp, -1) - head(temp, -1)
-  
-Avg_vol <- tail(bitcoin$Avg, -1) - head(bitcoin$Avg, -1)
-Avg_vol <- append(Avg_vol, 0, after=0)
+ggplot(data = bitcoin_vol, aes(x =Date, y=volatility_b)) + geom_line() + 
+  labs(title = "Bitcoin Volatility", y="Volatility")
 
-bitcoin_vol <- bitcoin %>% mutate(volatility_b = Avg_vol)
+gold_vol <- gold %>% mutate(Valuelag = lag(Value)) %>% mutate(volatility_g = (Value-Valuelag)/Value)
 
-ggplot(data = bitcoin_vol, aes(x =Date, y=volatility_b)) + geom_point() + 
-  labs(title = "Bitcoin Volatility")
-
-
-avg_g_vol <- tail(gold$Value, -1) - head(gold$Value, -1)
-avg_g_vol <- append(avg_g_vol, 0, after = 0)
-
-gold_vol <- gold %>% mutate(volatility_g = avg_g_vol)
-
-ggplot(data = gold_vol, aes(x = Date, y = volatility_g)) + geom_point() + labs(title = "Gold Volatility")
+ggplot(data = gold_vol, aes(x = Date, y = volatility_g)) + geom_line() + labs(title = "Gold Volatility", y = "Volatility")
 
 interval <- interval(ymd("2010-01-01"), ymd("2016-10-21"))
 
@@ -201,13 +190,13 @@ vol <- full_join(gold_vol, bitcoin_vol, by = "Date") %>% filter(Date %within% in
 
 plot <- ggplot(data = vol, aes(x = Date)) + labs(title = "both", y = "Volatility")
 
-plot + geom_line(aes(y=volatility_g, color = "gold")) + geom_line(aes(y = volatility_b, color = "bitcoin"))
-
+plot + geom_line(aes(y=volatility_b, color = "bitcoin")) + 
+  geom_line(aes(y = volatility_g, color = "gold"))
 
 ```
 
 
-While both Gold and Bitcoin are generally stable, Bitcoin started off more stable than gold from 2010-2013, but more recently Bitcoin has become more volatile than gold. Bitcoin has also faced much larger volatility shocks (as in 2014). Therefore, gold is a more stable investment than Bitcoin. 
+Bitcoin is much more volatile than gold. Volatility is defined as (value today - value yesterday)/value today. It is a measure of the percentage change in value from one day to the next. Therefore, gold is a more stable investment than Bitcoin because the value does not change as much. However, you could possibly make more money if you invest in Bitcoin instead of gold. 
 
 
 ## Question 3:
@@ -255,8 +244,4 @@ jukebox2
 
 
 ```
-
-
-
-
 
