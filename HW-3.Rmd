@@ -15,7 +15,8 @@ library(dplyr)
 library(readr)
 library(lubridate)
 library(Quandl)
-
+library(stringr)
+library(tidyr)
 ```
 
 
@@ -175,12 +176,12 @@ bitcoin <- Quandl("BAVERAGE/USD") %>%
 gold <- Quandl("BUNDESBANK/BBK01_WT5511") %>%
   tbl_df() 
 
-bitcoin_vol <- bitcoin %>% mutate(Avglag = lag(Avg)) %>% mutate(volatility_b = (Avg-Avglag)/Avg)
+bitcoin_vol <- bitcoin %>% mutate(Avglag = lead(Avg)) %>% mutate(volatility_b = (Avg-Avglag)/Avg)
 
 ggplot(data = bitcoin_vol, aes(x =Date, y=volatility_b)) + geom_line() + 
   labs(title = "Bitcoin Volatility", y="Volatility")
 
-gold_vol <- gold %>% mutate(Valuelag = lag(Value)) %>% mutate(volatility_g = (Value-Valuelag)/Value)
+gold_vol <- gold %>% mutate(Valuelag = lead(Value)) %>% mutate(volatility_g = (Value-Valuelag)/Value)
 
 ggplot(data = gold_vol, aes(x = Date, y = volatility_g)) + geom_line() + labs(title = "Gold Volatility", y = "Volatility")
 
@@ -235,13 +236,18 @@ the "graveyard shift" during the academic year? Define
 
 ```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
 
-jukebox2 <- jukebox %>% mutate(dt = parse_date_time(date_time, "a b d HMS y")) %>% 
-  mutate(month = month(dt)) %>% mutate(hour = hour(dt)) %>% 
-  filter(month <=5 | month >=9) %>% filter(hour==24 | hour < 8) %>% 
-  group_by(artist) %>% tally() %>% arrange(desc(n)) %>% head(10)
-  
-jukebox2
+jukebox2 <- jukebox %>% 
+  mutate(dt = parse_date_time(date_time, "a b d HMS y")) %>% 
+  mutate(month = month(dt)) %>% 
+  mutate(hour = hour(dt)) %>% 
+  filter(month <=5 | month >=9) %>% 
+  filter(hour < 8) %>% 
+  group_by(artist) %>% 
+  tally() %>% 
+  arrange(desc(n)) %>%
+  head(10)
 
+jukebox2
 
 ```
 
